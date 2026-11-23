@@ -1,0 +1,16 @@
+config.json
+blinds.json
+bridge.json
+pending.json
+stuck.txt
+wifi_off
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.new
+*.tmp
+venv/
+captures/
+__pycache__/
+*.pyc

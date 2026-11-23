@@ -1,0 +1,1181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blinds</title>
+<link rel="icon" href="data:,">
+<style>
+  :root {
+    --bg: #f4f2ee; --card: #ffffff; --ink: #1d1b18; --muted: #6f6a62;
+    --line: #e2ddd4; --accent: #2f5d50; --accent-ink: #ffffff; --mark: var(--accent);
+    --warn: #b3541e; --ok: #2f7d4f; --off: #a8a299;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #171614; --card: #211f1c; --ink: #ece8e1; --muted: #a09a90;
+      --line: #35322d; --accent: #6fae9a; --accent-ink: #10201b;
+      --warn: #e58a55; --ok: #74c493; --off: #6b665e;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 16px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  main { max-width: 1120px; margin: 0 auto; padding: 20px 14px 96px; }
+  header { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; margin-bottom: 14px; }
+  h1 { font-size: 28px; line-height: 1.2; margin: 0; letter-spacing: -0.02em; }
+  .title { flex: 1 1 150px; min-width: 0; display: flex; flex-direction: column; }
+  .pill { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 12px;
+          background: var(--card); border: 1px solid var(--line); border-radius: 18px; font-size: 14px; }
+  .dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--off); }
+  .dot.on { background: var(--ok); }
+  .small { font-size: 13px; color: var(--muted); }
+  #sun { display: block; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; margin-bottom: 14px; }
+  .row { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--line); }
+  .row:first-child { border-top: 0; }
+  .name { flex: 1; min-width: 0; }
+  .name b { display: block; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .name .small { display: block; }
+  .bad { color: var(--warn); }
+  button {
+    font: inherit; border: 1px solid var(--line); background: var(--card); color: var(--ink);
+    border-radius: 10px; padding: 8px 14px; min-height: 44px; cursor: pointer;
+  }
+  button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  button.link { border: 0; background: none; color: var(--muted); padding: 6px; min-height: 0; }
+  button:disabled { opacity: 0.5; cursor: default; }
+  button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--mark); outline-offset: 2px;
+  }
+  input, select {
+    font: inherit; color: var(--ink); background: var(--card);
+    border: 1px solid var(--line); border-radius: 10px; padding: 8px; min-height: 44px;
+  }
+  input[type=range] { width: 100%; padding: 0; border: 0; min-height: 28px; margin: 0; accent-color: var(--accent); }
+  input[type=color] { width: 64px; padding: 4px; cursor: pointer; }
+  .all { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 14px; }
+  .all b { font-size: 17px; }
+  .all button { font-weight: 600; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; margin-bottom: 14px; }
+  .blind { display: flex; flex-direction: column; gap: 12px; padding: 14px; margin: 0; }
+  .blind.warn { border-color: var(--warn); }
+  .blind .top { display: flex; align-items: center; gap: 12px; }
+  .blind .name b { font-size: 17px; }
+  .slats { flex: none; width: 56px; height: 57px; padding: 7px; background: var(--bg); border: 1px solid var(--line);
+           border-radius: 10px; display: flex; flex-direction: column; justify-content: center; gap: 5px; }
+  .slats i { display: block; height: 2px; background: var(--mark); border-radius: 1px; }
+  .slats.unknown i { background: var(--off); }
+  .batt { flex: none; display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: var(--muted); }
+  .batt.low { color: var(--warn); font-weight: 600; }
+  .cell { position: relative; width: 22px; height: 12px; padding: 1.5px; border: 1.5px solid currentColor;
+          border-radius: 3px; margin-right: 4px; }
+  .cell::after { content: ""; position: absolute; right: -4.5px; top: 2px; width: 2px; height: 5px;
+                 background: currentColor; border-radius: 1px; }
+  .cell i { display: block; height: 100%; background: currentColor; border-radius: 1px; }
+  .acts { display: flex; gap: 8px; }
+  .acts button { flex: 1; font-weight: 600; }
+  .acts button.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .acts button.more { flex: none; font-weight: 400; }
+  .acts button.more[aria-expanded=true] { border-color: var(--ink); background: var(--bg); }
+  .tilt { display: none; }
+  .tilt.show { display: block; }
+  .tilt .ends { display: flex; justify-content: space-between; }
+  .tilt .hint { margin-top: 6px; }
+  .next b { white-space: nowrap; }
+  details > summary { padding: 14px; cursor: pointer; font-weight: 600; list-style: none; display: flex; gap: 8px; }
+  details > summary::-webkit-details-marker { display: none; }
+  details > summary::after { content: "+"; margin-left: auto; color: var(--muted); }
+  details[open] > summary::after { content: "\2212"; }
+  .form { padding: 4px 12px 12px; display: grid; gap: 8px; }
+  .form .line { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .days label { display: inline-flex; align-items: center; gap: 3px; font-size: 14px; margin-right: 6px; }
+  .days input, .row > input[type=checkbox] { min-height: 0; }
+  .tip { border: 1px solid var(--line); border-radius: 50%; width: 20px; height: 20px; font-size: 12px;
+         display: inline-flex; align-items: center; justify-content: center; color: var(--muted); cursor: help; }
+  .log { padding: 0 12px 12px; font-size: 13px; color: var(--muted); max-height: 320px; overflow: auto; }
+  .log div { padding: 4px 0; border-top: 1px solid var(--line); }
+  #msg { min-height: 20px; font-size: 14px; margin: 0 2px 8px; }
+  .sub { font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+         color: var(--muted); margin-top: 10px; display: flex; align-items: center; gap: 6px; }
+  .sub:first-child { margin-top: 0; }
+  .sub.pad { padding: 0 12px; margin-top: 4px; }
+  .filebtn { border: 1px solid var(--line); border-radius: 10px; padding: 8px 14px; min-height: 44px;
+             display: inline-flex; align-items: center; cursor: pointer; }
+  .filebtn:focus-within { outline: 2px solid var(--mark); outline-offset: 2px; }
+  a { color: var(--ink); }
+  a.filebtn { text-decoration: none; }
+  .check { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; min-height: 44px; }
+  .check input { min-height: 0; }
+  .mini { border-top: 1px solid var(--line); display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 14px; }
+  .mini .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  pre.logbox { margin: 0; padding: 10px; background: var(--bg); border: 1px solid var(--line); border-radius: 10px;
+               font: 12px/1.45 ui-monospace, Menlo, Consolas, monospace; max-height: 300px; overflow: auto; white-space: pre-wrap; }
+  #login { max-width: 320px; margin: 18vh auto 0; display: none; }
+  #login .form { padding: 14px; }
+  #tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; display: grid; grid-template-columns: repeat(4, 1fr);
+          background: var(--card); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom); }
+  #tabs button { border: 0; border-top: 3px solid transparent; border-radius: 0; background: none; min-height: 60px;
+                 padding: 4px 2px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+                 gap: 2px; font-size: 12px; color: var(--muted); }
+  #tabs button[aria-current=page] { color: var(--ink); font-weight: 700; border-top-color: var(--mark); }
+  #tabs svg { width: 20px; height: 20px; }
+  .grow { flex: 1; }
+  .grow2 { flex: 2; }
+  .w86 { width: 86px; }
+  .min90 { min-width: 90px; }
+  .min110 { min-width: 110px; }
+  .min120 { min-width: 120px; }
+  .min150 { min-width: 150px; }
+  .foot { display: flex; gap: 10px; align-items: center; }
+  .push { margin-left: auto; }
+  .rename { flex: 1; min-height: 34px; padding: 4px 8px; }
+  @media (max-width: 899px) {
+    [data-pane], #openSettings { display: none; }
+    body[data-tab=blinds] [data-pane=blinds], body[data-tab=scheds] [data-pane=scheds],
+    body[data-tab=log] [data-pane=log], body[data-tab=settings] [data-pane=settings] { display: block; }
+    details[data-pane] > summary { pointer-events: none; }
+    details[data-pane] > summary::after { display: none; }
+  }
+  @media (min-width: 900px) {
+    main { padding: 28px 24px 40px; }
+    .cols { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 20px; align-items: start; }
+    #sun { display: inline; }
+    #sun:not(:empty)::before { content: " · "; }
+    #tabs, .acts button.more { display: none; }
+    .tilt { display: block; }
+  }
+  .hide { display: none !important; }
+</style>
+</head>
+<body data-tab="blinds">
+<main>
+  <section id="login" class="card" aria-label="Sign in">
+    <form class="form" id="loginForm">
+      <b>Blinds</b>
+      <input type="password" id="pw" placeholder="Password" autocomplete="current-password" aria-label="Password">
+      <button class="primary" type="submit">Sign in</button>
+      <div class="small bad" id="loginMsg" role="alert"></div>
+    </form>
+  </section>
+
+  <div id="app" class="hide">
+    <header>
+      <div class="title">
+        <h1>Blinds</h1>
+        <span class="small"><span id="clock" title="The Pi's clock. Schedules run on it."></span><span id="sun"></span></span>
+      </div>
+      <span class="pill"><span class="dot" id="bridgeDot"></span><span id="bridgeText"></span></span>
+      <button type="button" id="openSettings">Settings</button>
+    </header>
+    <div id="msg" class="small" role="status"></div>
+
+    <div class="cols">
+    <div>
+    <div data-pane="blinds">
+      <div class="card all">
+        <div class="name"><b>All blinds</b><span class="small" id="allSum"></span></div>
+        <button type="button" data-all="100">Open</button>
+        <button type="button" data-all="200">Close</button>
+      </div>
+      <div class="grid" id="blinds"></div>
+    </div>
+
+    <details class="card" id="settingsBox" data-pane="settings">
+      <summary>Settings</summary>
+      <div class="form">
+        <div class="sub">Blinds
+          <span class="tip" title="Blinds and their keys are stored on the bridge. Import the phone app's backup file to load them, or scan to see which motors are in range.">i</span>
+        </div>
+        <div class="line">
+          <select id="aBridge" aria-label="Bridge" class="grow"></select>
+          <button type="button" id="aScan">Scan</button>
+          <label class="filebtn">Import backup<input type="file" id="aImport" accept=".json,application/json" hidden></label>
+        </div>
+        <div id="aBlinds"></div>
+        <div id="aFound"></div>
+
+        <div class="sub">Update
+          <span class="tip" title="Choose a BlindBridge zip. It is checked, installed, and the services restart. Settings, schedules and keys are kept.">i</span>
+        </div>
+        <div class="line">
+          <label class="filebtn"><span id="uName">Choose zip</span><input type="file" id="uFile" accept=".zip,application/zip" hidden></label>
+          <input type="password" id="uPw" placeholder="Password" autocomplete="current-password" aria-label="Password to confirm the update" class="grow min120">
+          <button type="button" id="uGo" class="primary">Install</button>
+        </div>
+        <div class="line">
+          <a class="filebtn" id="uDown" href="/api/admin/download" download
+             title="Saves the installed version as a zip. It holds the program only, never your password, keys or schedules. Keep it as a backup.">Download current</a>
+        </div>
+
+        <div class="sub">Maintenance</div>
+        <div class="line">
+          <select id="mTarget" aria-label="Which service" class="grow"></select>
+          <button type="button" id="mLogs">View log</button>
+          <button type="button" id="mRestart">Restart</button>
+        </div>
+        <pre class="logbox hide" id="mLogText" tabindex="0" aria-label="Service log"></pre>
+        <div class="line">
+          <button type="button" id="pwReboot">Restart Pi</button>
+          <button type="button" id="pwOff">Shut down Pi</button>
+          <span class="tip" title="Shut down before unplugging the Pi. Once it is shut down it stays off until its power is unplugged and plugged back in, so only do that when someone is there. Restart Pi comes back by itself in about a minute.">i</span>
+        </div>
+
+        <div class="sub">Network
+          <span class="tip" title="For when the Pi is on a network cable and you would rather it did not also sit on Wi-Fi. With 'Off while a cable is working', the Pi switches its Wi-Fi off whenever a network cable is plugged in and working, and back on within about 15 seconds if the cable is unplugged or goes dead, so the Pi can always be reached. The page's address changes with it: use the cable address shown here.">i</span>
+        </div>
+        <div class="line">
+          <select id="nMode" aria-label="Wi-Fi" class="grow">
+            <option value="on">Wi-Fi always on</option>
+            <option value="auto">Wi-Fi off while a cable is working</option>
+          </select>
+        </div>
+        <div class="small" id="nStatus"></div>
+
+        <div class="sub">Capture
+          <span class="tip" title="For working out what the motors report, such as battery level. Capture now records one blind for about 30 seconds without moving it. Record moves also records every move for an hour, or until you turn it off, and makes each move about 30 seconds slower. Download debug zip saves the recordings, the logs and the Pi's Bluetooth and network status as one file for troubleshooting. It never holds your password, the tokens or the blinds' keys. It does hold your blinds' names and Bluetooth addresses, the Pi's name and network addresses, and the names of nearby Bluetooth devices the Pi has seen, so share it only with someone you trust and never post it in public.">i</span>
+        </div>
+        <div class="line">
+          <select id="cBlind" aria-label="Blind to capture" class="grow"></select>
+          <button type="button" id="cNow">Capture now</button>
+        </div>
+        <div class="line">
+          <input id="cNote" maxlength="160" placeholder="Note, e.g. app shows battery 87%" aria-label="Note saved with the capture" class="grow min150">
+        </div>
+        <div class="line">
+          <label class="check"><input type="checkbox" id="cMode"> Record moves</label>
+          <button type="button" id="cDown" class="primary">Download debug zip</button>
+          <button type="button" id="cClear" class="link">Clear</button>
+          <span class="small" id="cCount"></span>
+        </div>
+
+        <div class="sub">Appearance
+          <span class="tip" title="The color of the buttons, sliders and blind pictures, and whether times read 5:30 PM or 17:30, on every device that opens this page. Text on the color switches between light and dark by itself so it stays readable.">i</span>
+        </div>
+        <div class="line">
+          <input type="color" id="apColor" value="#2f5d50" aria-label="Accent color">
+          <button type="button" id="apReset" class="link hide">Back to green</button>
+          <select id="apClock" aria-label="How times are shown" class="grow min150">
+            <option value="auto">Times as this device shows them</option>
+            <option value="12">12-hour times (5:30 PM)</option>
+            <option value="24">24-hour times (17:30)</option>
+          </select>
+        </div>
+
+        <div class="sub">Location
+          <span class="tip" title="Used for schedule times and for sunrise and sunset. Leave latitude and longitude empty to turn sun schedules off.">i</span>
+        </div>
+        <div class="line">
+          <input id="lTz" placeholder="Europe/Rome" aria-label="Timezone" class="grow2 min150">
+          <input id="lLat" inputmode="decimal" placeholder="Latitude" aria-label="Latitude" class="grow min90">
+          <input id="lLon" inputmode="decimal" placeholder="Longitude" aria-label="Longitude" class="grow min90">
+          <button type="button" id="lSave">Save</button>
+        </div>
+
+        <div class="sub">Password</div>
+        <div class="line">
+          <input type="password" id="pCur" placeholder="Current" autocomplete="current-password" aria-label="Current password" class="grow min110">
+          <input type="password" id="pNew" placeholder="New (8+ characters)" autocomplete="new-password" aria-label="New password" class="grow min110">
+          <button type="button" id="pSave">Change</button>
+        </div>
+        <div class="small" id="aMsg" role="status"></div>
+      </div>
+    </details>
+
+    </div>
+
+    <div>
+    <details class="card" id="schedBox" data-pane="scheds">
+      <summary>Schedules <span class="small" id="schedCount"></span></summary>
+      <div id="nextUp"></div>
+      <div id="scheds"></div>
+      <form class="form" id="schedForm">
+        <input type="hidden" id="sId">
+        <div class="line">
+          <input id="sName" placeholder="Name" maxlength="60" aria-label="Schedule name" required class="grow">
+        </div>
+        <div class="line">
+          <select id="sKind" aria-label="When">
+            <option value="time">At time</option>
+            <option value="sunrise">Sunrise</option>
+            <option value="sunset">Sunset</option>
+          </select>
+          <input type="time" id="sAt" value="07:30" aria-label="Time">
+          <input type="number" id="sOff" value="0" min="-360" max="360" aria-label="Offset minutes" class="hide w86">
+          <span class="tip hide" id="sOffTip" title="Minutes after the sun event. Use a negative number for before.">i</span>
+        </div>
+        <div class="line days" id="sDays"></div>
+        <div class="line">
+          <select id="sBlind" aria-label="Which blinds" class="grow"></select>
+          <select id="sPos" aria-label="Action">
+            <option value="100">Open</option>
+            <option value="200">Close</option>
+            <option value="0">Close up</option>
+            <option value="150">Half</option>
+          </select>
+        </div>
+        <div class="line">
+          <button class="primary" type="submit" id="sSave">Add schedule</button>
+          <button type="button" id="sCancel" class="hide">Cancel</button>
+        </div>
+      </form>
+    </details>
+
+    <details class="card" id="logBox" data-pane="log">
+      <summary>Activity</summary>
+      <div class="log" id="log"></div>
+    </details>
+
+    <details class="card" id="bridgeBox" data-pane="settings">
+      <summary>Bridges</summary>
+      <div id="bridges"></div>
+    </details>
+
+    </div>
+    </div>
+
+    <div class="small foot">
+      <span id="ver"></span>
+      <button class="link push" id="logout">Sign out</button>
+    </div>
+    <nav id="tabs" aria-label="Sections">
+      <button type="button" data-tab="blinds" aria-current="page">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 5h16M4 10h16M4 15h16M4 20h16"/></svg>
+        Blinds</button>
+      <button type="button" data-tab="scheds">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        Schedules</button>
+      <button type="button" data-tab="log">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11M4 6h.5M4 12h.5M4 18h.5"/></svg>
+        Activity</button>
+      <button type="button" data-tab="settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h2M10 12h10M4 18h8M16 18h4"/><circle cx="16" cy="6" r="2"/><circle cx="8" cy="12" r="2"/><circle cx="14" cy="18" r="2"/></svg>
+        Settings</button>
+    </nav>
+  </div>
+</main>
+
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+  var state = null, timer = null, openTilt = {}, dragging = false, editEnabled = true;
+
+  function el(tag, attrs, kids) {
+    var node = document.createElement(tag);
+    Object.keys(attrs || {}).forEach(function (key) {
+      if (key === "text") node.textContent = attrs[key];
+      else if (key === "class") node.className = attrs[key];
+      else node.setAttribute(key, attrs[key]);
+    });
+    (kids || []).forEach(function (kid) { node.appendChild(kid); });
+    return node;
+  }
+
+  function api(method, path, body) {
+    var opts = { method: method, headers: { "X-BB": "1" }, credentials: "same-origin" };
+    if (body !== undefined) {
+      opts.headers["Content-Type"] = "application/json";
+      opts.body = JSON.stringify(body);
+    }
+    return fetch(path, opts).then(function (res) {
+      return res.json().catch(function () { return {}; }).then(function (data) {
+        if (res.status === 401 && path !== "/api/login") { showLogin(); }
+        if (!res.ok) { throw new Error(data.error || ("HTTP " + res.status)); }
+        return data;
+      });
+    });
+  }
+
+  function say(text, bad) {
+    $("msg").textContent = text || "";
+    $("msg").className = "small" + (bad ? " bad" : "");
+  }
+
+  function posLabel(pos) {
+    if (pos === null || pos === undefined) return "Unknown";
+    // The motor reports where it stopped, which can be a step or two short of what was asked.
+    if (Math.abs(pos - 100) <= 3) return "Open";
+    if (pos >= 197) return "Closed";
+    if (pos <= 3) return "Closed up";
+    return "Tilt " + pos;
+  }
+
+  var hour12 = false;
+
+  function deviceUses12() {
+    try { return !!new Intl.DateTimeFormat(undefined, { hour: "numeric" }).resolvedOptions().hour12; }
+    catch (err) { return false; }
+  }
+
+  // The server writes times as 17:30. With a 12-hour clock chosen they are shown as 5:30 PM.
+  function tm(text) {
+    if (!hour12 || !text) return text || "";
+    return String(text).replace(/\b([01]\d|2[0-3]):([0-5]\d)\b/g, function (all, h, m) {
+      h = parseInt(h, 10);
+      return (h % 12 || 12) + ":" + m + (h < 12 ? " AM" : " PM");
+    });
+  }
+
+  function ago(sec) {
+    if (sec === null || sec === undefined) return "";
+    if (sec < 90) return "just now";
+    if (sec < 5400) return Math.round(sec / 60) + " min ago";
+    if (sec < 129600) return Math.round(sec / 3600) + " h ago";
+    return Math.round(sec / 86400) + " d ago";
+  }
+
+  function showLogin() {
+    clearTimeout(timer);
+    $("app").classList.add("hide");
+    $("login").style.display = "block";
+    $("pw").focus();
+  }
+
+  function move(blinds, position) {
+    say("Sending…");
+    api("POST", "/api/move", { blinds: blinds, position: position })
+      .then(function () { say(""); refresh(); })
+      .catch(function (err) { say(err.message, true); });
+  }
+
+  function slatBox(pos) {
+    var known = typeof pos === "number";
+    var turned = known ? Math.min(1, Math.abs(pos - 100) / 100) : 0.5;
+    var thick = Math.round(2 + turned * 4);
+    var box = el("div", { class: "slats" + (known ? "" : " unknown"), "aria-hidden": "true" });
+    box.style.gap = (7 - thick) + "px";
+    for (var i = 0; i < 6; i += 1) {
+      var bar = el("i");
+      bar.style.height = thick + "px";
+      box.appendChild(bar);
+    }
+    return box;
+  }
+
+  function batteryMeter(blind) {
+    if (typeof blind.battery !== "number") return null;
+    var low = blind.battery < 25 && !blind.charging;
+    var fill = el("i");
+    fill.style.width = Math.max(8, Math.min(100, blind.battery)) + "%";
+    var meter = el("span", { class: "batt" + (low ? " low" : "") }, [
+      el("span", { class: "cell", "aria-hidden": "true" }, [fill]),
+      el("span", { class: "sr", text: "Battery " }),
+      el("span", { text: blind.battery + "%" + (blind.charging ? " · charging" : (low ? " · Low" : "")) })
+    ]);
+    meter.title = "Battery" + (blind.health_ago === null || blind.health_ago === undefined ? "" : " read " + ago(blind.health_ago)) +
+                  (blind.charging ? " (" + blind.charging + " charging)" : "");
+    return meter;
+  }
+
+  function summary() {
+    var open = 0, closed = 0, check = 0, other = 0;
+    state.blinds.forEach(function (blind) {
+      var label = posLabel(blind.pos);
+      if (!blind.busy && (blind.offline || !blind.ok)) check += 1;
+      else if (label === "Open") open += 1;
+      else if (label === "Closed" || label === "Closed up") closed += 1;
+      else other += 1;
+    });
+    var parts = [];
+    if (open) parts.push(open + " open");
+    if (closed) parts.push(closed + " closed");
+    if (other) parts.push(other + " tilted");
+    if (check) parts.push(check + " to check");
+    return parts.join(" · ");
+  }
+
+  function renderBlinds() {
+    var box = $("blinds");
+    if (dragging) return;
+    box.textContent = "";
+    $("allSum").textContent = summary();
+    if (!state.blinds.length) {
+      box.appendChild(el("div", { class: "card row small", text: "No blinds yet. Add them on the bridge, then they appear here." }));
+      return;
+    }
+    state.blinds.forEach(function (blind) {
+      var bad = !blind.busy && (blind.offline || !blind.ok);
+      var status = blind.busy ? "Moving…"
+        : (blind.offline ? "Bridge offline" : (blind.ok ? posLabel(blind.pos) : (blind.err || "Failed")));
+      var when = blind.busy || blind.offline ? "" : ago(blind.moved_ago);
+      var unmoved = !blind.busy && !blind.offline && !blind.ok && /^Motor says/.test(blind.err || "") &&
+                    typeof blind.pos === "number";
+      if (unmoved) status += " · " + posLabel(blind.pos);
+      var sub = el("span", { class: "small" + (bad ? " bad" : ""), text: status + (when ? " · " + when : "") });
+      if (unmoved) {
+        sub.title = "The motor acknowledged the command, but the position it broadcasts afterwards is not the one it was sent to.";
+      }
+      var settled = !blind.busy && !blind.offline && blind.ok, label = posLabel(blind.pos);
+      var isOpen = settled && label === "Open", isClosed = settled && label === "Closed";
+      var shown = !!openTilt[blind.id] || unmoved;
+      var top = [slatBox(blind.pos), el("div", { class: "name" }, [el("b", { text: blind.name }), sub])];
+      var meter = batteryMeter(blind);
+      if (meter) top.push(meter);
+      var openBtn = el("button", { type: "button", class: isOpen ? "on" : "", "aria-pressed": String(isOpen), text: "Open" });
+      var closeBtn = el("button", { type: "button", class: isClosed ? "on" : "", "aria-pressed": String(isClosed), text: "Close" });
+      var more = el("button", { type: "button", class: "more", text: "Tilt",
+                                "aria-label": "Tilt " + blind.name, "aria-expanded": String(shown) });
+      openBtn.onclick = function () { move([blind.id], 100); };
+      closeBtn.onclick = function () { move([blind.id], 200); };
+      var range = el("input", { type: "range", min: "0", max: "200", step: "5",
+                                value: String(blind.pos === null ? 100 : blind.pos),
+                                "aria-label": "Tilt position for " + blind.name });
+      var tilt = el("div", { class: "tilt" + (shown ? " show" : "") }, [
+        range,
+        el("div", { class: "ends small" }, [
+          el("span", { text: "Closed up" }), el("span", { text: "Open" }), el("span", { text: "Closed" })
+        ])
+      ]);
+      if (unmoved) {
+        tilt.appendChild(el("div", { class: "hint small", text: "Send it to another angle with the slider, then try the button again." }));
+      }
+      more.onclick = function () {
+        openTilt[blind.id] = !openTilt[blind.id];
+        tilt.classList.toggle("show", !!openTilt[blind.id] || unmoved);
+        more.setAttribute("aria-expanded", String(tilt.classList.contains("show")));
+      };
+      range.oninput = function () { dragging = true; };
+      range.onchange = function () { dragging = false; move([blind.id], parseInt(range.value, 10)); };
+      box.appendChild(el("article", { class: "card blind" + (unmoved ? " warn" : "") }, [
+        el("div", { class: "top" }, top), tilt, el("div", { class: "acts" }, [openBtn, closeBtn, more])
+      ]));
+    });
+  }
+
+  function schedText(s) {
+    var when = s.kind === "time" ? tm(s.at) : (s.kind === "sunrise" ? "Sunrise" : "Sunset");
+    if (s.kind !== "time" && s.offset_min) when += (s.offset_min > 0 ? " +" : " ") + s.offset_min + "m";
+    if (s.kind !== "time" && s.today) when += " (" + tm(s.today) + ")";
+    var days = s.days.length === 7 ? "Daily" : s.days.map(function (d) {
+      return d.charAt(0).toUpperCase() + d.slice(1, 3);
+    }).join(" ");
+    return when + " · " + days + " · " + schedTarget(s);
+  }
+
+  function schedTarget(s) {
+    var who = s.blinds.indexOf("all") >= 0 ? "All" : s.blinds.map(function (id) {
+      var hit = state.blinds.filter(function (b) { return b.id === id; })[0];
+      return hit ? hit.name : "missing blind";
+    }).join(", ");
+    return who + " → " + posLabel(s.position);
+  }
+
+  function renderScheds() {
+    var box = $("scheds");
+    box.textContent = "";
+    $("schedCount").textContent = state.schedules.length ? "(" + state.schedules.length + ")" : "";
+    var coming = state.schedules.filter(function (s) { return typeof s.next_in === "number"; })
+      .sort(function (a, b) { return a.next_in - b.next_in; }).slice(0, 2);
+    $("nextUp").textContent = "";
+    if (coming.length) {
+      $("nextUp").appendChild(el("div", { class: "sub pad", text: "Next up" }));
+      coming.forEach(function (s) {
+        $("nextUp").appendChild(el("div", { class: "row next" }, [
+          el("div", { class: "name" }, [el("b", { text: tm(s.next) }), el("span", { class: "small", text: s.name + " · " + schedTarget(s) })])
+        ]));
+      });
+      box.appendChild(el("div", { class: "sub pad", text: "All schedules" }));
+    }
+    state.schedules.forEach(function (s) {
+      var toggle = el("input", { type: "checkbox", "aria-label": "Enabled: " + s.name });
+      toggle.checked = s.enabled;
+      toggle.onchange = function () {
+        var copy = JSON.parse(JSON.stringify(s));
+        copy.enabled = toggle.checked;
+        delete copy.today; delete copy.last_fired; delete copy.next; delete copy.next_in;
+        api("POST", "/api/schedules", copy).then(refresh).catch(function (e) { say(e.message, true); });
+      };
+      var edit = el("button", { class: "link", text: "Edit" });
+      edit.onclick = function () { fillForm(s); };
+      var del = el("button", { class: "link", text: "Delete" });
+      del.onclick = function () {
+        if (del.textContent === "Delete") { del.textContent = "Sure?"; return; }
+        api("DELETE", "/api/schedules/" + s.id).then(refresh).catch(function (e) { say(e.message, true); });
+      };
+      box.appendChild(el("div", { class: "row" }, [
+        toggle,
+        el("div", { class: "name" }, [el("b", { text: s.name }), el("span", { class: "small", text: schedText(s) })]),
+        edit, del
+      ]));
+    });
+  }
+
+  function fillBlindSelect() {
+    var sel = $("sBlind"), keep = sel.value;
+    sel.textContent = "";
+    sel.appendChild(el("option", { value: "all", text: "All blinds" }));
+    state.blinds.forEach(function (b) { sel.appendChild(el("option", { value: b.id, text: b.name })); });
+    if (keep) sel.value = keep;
+  }
+
+  function fillForm(s) {
+    $("sId").value = s ? s.id : "";
+    editEnabled = s ? s.enabled : true;
+    $("sName").value = s ? s.name : "";
+    $("sKind").value = s ? s.kind : "time";
+    $("sAt").value = s && s.at ? s.at : "07:30";
+    $("sOff").value = s ? s.offset_min : 0;
+    $("sPos").value = s ? String(s.position) : "100";
+    if ($("sPos").value !== (s ? String(s.position) : "100")) {
+      $("sPos").appendChild(el("option", { value: String(s.position), text: posLabel(s.position) }));
+      $("sPos").value = String(s.position);
+    }
+    $("sBlind").value = s && s.blinds.length === 1 ? s.blinds[0] : "all";
+    DAYS.forEach(function (d) { $("d_" + d).checked = s ? s.days.indexOf(d) >= 0 : true; });
+    $("sSave").textContent = s ? "Save" : "Add schedule";
+    $("sCancel").classList.toggle("hide", !s);
+    kindChanged();
+    if (s) $("sName").focus();
+  }
+
+  function kindChanged() {
+    var timed = $("sKind").value === "time";
+    $("sAt").classList.toggle("hide", !timed);
+    $("sOff").classList.toggle("hide", timed);
+    $("sOffTip").classList.toggle("hide", timed);
+  }
+
+  function bridgeSummary() {
+    var b = state.bridge;
+    if (!b.count) return "No bridge yet";
+    if (b.count > 1) return b.online_count + " of " + b.count + " bridges online";
+    if (b.online) return "Bridge online";
+    return b.seen_ago === null ? "Bridge offline" : "Bridge offline, seen " + ago(b.seen_ago);
+  }
+
+  function renderBridges() {
+    var box = $("bridges");
+    box.textContent = "";
+    state.bridges.forEach(function (b) {
+      var bits = [b.online ? "Online" : (b.seen_ago === null ? "Not seen since restart" : "Seen " + ago(b.seen_ago)),
+                  b.blinds + (b.blinds === 1 ? " blind" : " blinds")];
+      if (b.fw) bits.push("v" + b.fw);
+      if (b.capture) bits.push("recording moves");
+      if (b.wifi_off) bits.push("on cable, Wi-Fi off");
+      var kids = [
+        el("span", { class: "dot" + (b.online ? " on" : "") }),
+        el("div", { class: "name" }, [el("b", { text: b.id }),
+          el("span", { class: "small" + (b.online ? "" : " bad"), text: bits.join(" · ") })])
+      ];
+      if (!b.online) {
+        var forget = el("button", { class: "link", text: "Forget",
+                                    title: "Remove this bridge and its blinds from the list" });
+        forget.onclick = function () {
+          if (forget.textContent === "Forget") { forget.textContent = "Sure?"; return; }
+          api("DELETE", "/api/bridges/" + encodeURIComponent(b.id)).then(refresh)
+            .catch(function (e) { say(e.message, true); });
+        };
+        kids.push(forget);
+      }
+      box.appendChild(el("div", { class: "row" }, kids));
+    });
+    if (!state.bridges.length) {
+      box.appendChild(el("div", { class: "row small", text: "No bridge has connected yet." }));
+    }
+  }
+
+  // ---- Accent color -----------------------------------------------------
+
+  var DEFAULT_ACCENT = "#2f5d50", accent = null;
+
+  function darkScheme() {
+    return !!(window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+  }
+
+  function channels(hex) {
+    return [1, 3, 5].map(function (at) { return parseInt(hex.substr(at, 2), 16); });
+  }
+
+  function luminance(hex) {
+    var lin = channels(hex).map(function (v) {
+      v /= 255;
+      return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+    });
+    return 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2];
+  }
+
+  function contrast(a, b) {
+    var la = luminance(a), lb = luminance(b);
+    return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+  }
+
+  // The same hue and saturation, a step lighter.
+  function lighten(hex, step) {
+    var c = channels(hex).map(function (v) { return v / 255; });
+    var max = Math.max(c[0], c[1], c[2]), min = Math.min(c[0], c[1], c[2]), span = max - min;
+    var light = (max + min) / 2, sat = span ? span / (1 - Math.abs(2 * light - 1)) : 0, hue = 0;
+    if (span) {
+      if (max === c[0]) hue = ((c[1] - c[2]) / span + 6) % 6;
+      else if (max === c[1]) hue = (c[2] - c[0]) / span + 2;
+      else hue = (c[0] - c[1]) / span + 4;
+    }
+    light = Math.min(0.95, light + step);
+    var chroma = (1 - Math.abs(2 * light - 1)) * sat, x = chroma * (1 - Math.abs(hue % 2 - 1)), base = light - chroma / 2;
+    var rgb = [[chroma, x, 0], [x, chroma, 0], [0, chroma, x], [0, x, chroma], [x, 0, chroma], [chroma, 0, x]][Math.floor(hue) % 6];
+    return "#" + rgb.map(function (v) {
+      return ("0" + Math.round((v + base) * 255).toString(16)).slice(-2);
+    }).join("");
+  }
+
+  // Applies the chosen color. On a dark page a dark color is lightened until it
+  // shows, and the text on it and the small marks keep enough contrast to read.
+  function applyAccent(hex) {
+    if (!/^#[0-9a-f]{6}$/.test(hex || "")) hex = DEFAULT_ACCENT;
+    accent = hex;
+    $("apReset").classList.toggle("hide", hex === DEFAULT_ACCENT);
+    var root = document.documentElement.style;
+    if (hex === DEFAULT_ACCENT) {
+      ["--accent", "--accent-ink", "--mark"].forEach(function (name) { root.removeProperty(name); });
+    } else {
+      var card = darkScheme() ? "#211f1c" : "#ffffff", shown = hex, tries = 0;
+      while (darkScheme() && contrast(shown, card) < 3 && tries < 16) { shown = lighten(shown, 0.05); tries += 1; }
+      root.setProperty("--accent", shown);
+      root.setProperty("--accent-ink", contrast(shown, "#ffffff") >= 4.5 ? "#ffffff" : "#1d1b18");
+      root.setProperty("--mark", contrast(shown, card) >= 2.2 ? shown : (darkScheme() ? "#a09a90" : "#6f6a62"));
+    }
+    try { localStorage.setItem("bb_accent", hex); } catch (err) { /* private browsing */ }
+  }
+
+  // ---- Settings ---------------------------------------------------------
+
+  var renaming = null, infoLoaded = false, modeBusy = false;
+
+  function note(text, bad) {
+    $("aMsg").textContent = text || "";
+    $("aMsg").className = "small" + (bad ? " bad" : "");
+  }
+
+  function busyWhile(button, promise) {
+    button.disabled = true;
+    return promise.then(function (value) { button.disabled = false; return value; },
+                        function (err) { button.disabled = false; note(err.message, true); throw err; });
+  }
+
+  function fillSelect(sel, options) {
+    var keep = sel.value;
+    sel.textContent = "";
+    options.forEach(function (o) { sel.appendChild(el("option", { value: o[0], text: o[1] })); });
+    if (options.some(function (o) { return o[0] === keep; })) sel.value = keep;
+  }
+
+  function renderSettings() {
+    if (document.activeElement !== $("aBridge")) {
+      fillSelect($("aBridge"), state.bridges.map(function (b) { return [b.id, b.id + (b.online ? "" : " (offline)")]; }));
+    }
+    if (document.activeElement !== $("mTarget")) {
+      fillSelect($("mTarget"), [["server", "Server"]].concat(
+        state.bridges.map(function (b) { return [b.id, "Bridge: " + b.id]; })));
+    }
+    var picked = state.bridges.filter(function (b) { return b.id === $("aBridge").value; })[0];
+    if (document.activeElement !== $("cBlind")) {
+      fillSelect($("cBlind"), state.blinds.filter(function (b) { return picked && b.bridge === picked.id; })
+        .map(function (b) { return [b.id, b.name]; }));
+    }
+    if (!modeBusy) $("cMode").checked = !!(picked && picked.capture);
+    $("cCount").textContent = picked && picked.captures ? picked.captures + " saved" : "";
+    if (renaming) return;
+    var box = $("aBlinds"), bridge = $("aBridge").value;
+    box.textContent = "";
+    state.blinds.filter(function (b) { return b.bridge === bridge; }).forEach(function (b) {
+      var name = el("span", { class: "name", text: b.name });
+      var rename = el("button", { class: "link", text: "Rename", type: "button" });
+      var remove = el("button", { class: "link", text: "Remove", type: "button" });
+      var row = el("div", { class: "mini" }, [name, rename, remove]);
+      rename.onclick = function () {
+        renaming = b.id;
+        var input = el("input", { value: b.name, maxlength: "48", "aria-label": "New name for " + b.name, class: "rename" });
+        var save = el("button", { class: "link", text: "Save", type: "button" });
+        var cancel = el("button", { class: "link", text: "Cancel", type: "button" });
+        row.textContent = "";
+        [input, save, cancel].forEach(function (n) { row.appendChild(n); });
+        input.focus();
+        cancel.onclick = function () { renaming = null; renderSettings(); };
+        save.onclick = function () {
+          busyWhile(save, api("POST", "/api/admin/blind", { bridge: bridge, action: "rename", blind: b.id, name: input.value }))
+            .then(function () { renaming = null; note("Renamed"); refresh(); }, function () {});
+        };
+        input.onkeydown = function (ev) { if (ev.key === "Enter") save.onclick(); if (ev.key === "Escape") cancel.onclick(); };
+      };
+      remove.onclick = function () {
+        if (remove.textContent === "Remove") { remove.textContent = "Sure?"; return; }
+        busyWhile(remove, api("POST", "/api/admin/blind", { bridge: bridge, action: "remove", blind: b.id }))
+          .then(function () { note("Removed " + b.name); refresh(); }, function () {});
+      };
+      box.appendChild(row);
+    });
+  }
+
+  function loadInfo() {
+    return api("GET", "/api/admin/info").then(function (info) {
+      infoLoaded = true;
+      $("lTz").value = info.timezone || "";
+      $("lLat").value = info.latitude === null ? "" : info.latitude;
+      $("lLon").value = info.longitude === null ? "" : info.longitude;
+      $("mRestart").title = info.can_restart ? "" : "The server can only restart itself when it runs as a service";
+      ["pwReboot", "pwOff"].forEach(function (id) {
+        $(id).disabled = !info.can_power;
+        $(id).title = info.can_power ? "" : "Run 'sh deploy/install.sh' once on the Pi to enable this";
+      });
+    }).catch(function (err) { note(err.message, true); });
+  }
+
+  function showNetwork(net) {
+    var box = $("nStatus"), port = location.port ? ":" + location.port : "";
+    $("nMode").value = net.mode === "auto" ? "auto" : "on";
+    $("nMode").disabled = !net.can_switch || net.wifi === "none";
+    box.textContent = "";
+    function line(label, state, ip) {
+      ip = /^\d{1,3}(\.\d{1,3}){3}$/.test(ip || "") ? ip : "";
+      var row = el("div", {}, [el("span", { text: label + ": " + state + (ip ? " · " : "") })]);
+      if (ip) row.appendChild(el("a", { href: location.protocol + "//" + ip + port + "/", text: ip + port }));
+      box.appendChild(row);
+    }
+    line("Cable", net.cable_ready ? "working" : (net.cable ? "plugged in, no address yet" : "not connected"), net.cable_ip);
+    line("Wi-Fi", net.wifi === "none" ? "this machine has none" : net.wifi, net.wifi_ip);
+    if (!net.can_switch && net.wifi !== "none") {
+      box.appendChild(el("div", { class: "bad", text: "The bridge's user may not switch Wi-Fi. Add it to the netdev group, then restart the bridge." }));
+    }
+  }
+
+  function loadNetwork() {
+    var bridge = $("aBridge").value;
+    if (!bridge) { $("nStatus").textContent = ""; $("nMode").disabled = true; return; }
+    api("GET", "/api/admin/network?bridge=" + encodeURIComponent(bridge)).then(showNetwork, function (err) {
+      $("nMode").disabled = true;
+      $("nStatus").textContent = "Not available: " + err.message;
+    });
+  }
+
+  function waitForRestart(message) {
+    note(message);
+    clearTimeout(timer);
+    var tries = 0;
+    (function poll() {
+      tries += 1;
+      fetch("/healthz", { cache: "no-store" }).then(function (res) {
+        if (!res.ok) throw new Error("not yet");
+        return api("GET", "/api/state");
+      }).then(function (data) {
+        if (tries < 3) throw new Error("give the old process time to leave");
+        location.reload();
+      }).catch(function () {
+        if (tries > 60) { note("Still not back after two minutes. Check the Pi.", true); refresh(); return; }
+        setTimeout(poll, 2000);
+      });
+    })();
+  }
+
+  function toBase64(buffer) {
+    var bytes = new Uint8Array(buffer), out = "", chunk = 0x8000;
+    for (var i = 0; i < bytes.length; i += chunk) {
+      out += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+    }
+    return btoa(out);
+  }
+
+  function showTab(name) {
+    document.body.setAttribute("data-tab", name);
+    document.querySelectorAll("#tabs button").forEach(function (tab) {
+      if (tab.getAttribute("data-tab") === name) tab.setAttribute("aria-current", "page");
+      else tab.removeAttribute("aria-current");
+    });
+    document.querySelectorAll('details[data-pane="' + name + '"]').forEach(function (box) { box.open = true; });
+    document.documentElement.scrollTop = 0;
+  }
+
+  function wireSettings() {
+    $("settingsBox").addEventListener("toggle", function () {
+      if ($("settingsBox").open && !infoLoaded) loadInfo();
+      if ($("settingsBox").open) loadNetwork();
+    });
+    $("openSettings").onclick = function () {
+      $("settingsBox").open = true;
+      if ($("settingsBox").scrollIntoView) $("settingsBox").scrollIntoView({ block: "start" });
+    };
+    $("apColor").onchange = function () {
+      busyWhile($("apColor"), api("POST", "/api/admin/appearance", { accent: $("apColor").value })).then(function (res) {
+        applyAccent(res.accent); note("Color saved");
+      }, function () {});
+    };
+    $("apClock").onchange = function () {
+      busyWhile($("apClock"), api("POST", "/api/admin/appearance", { clock: $("apClock").value })).then(function () {
+        note("Time format saved"); refresh();
+      }, function () {});
+    };
+    $("apReset").onclick = function () {
+      busyWhile($("apReset"), api("POST", "/api/admin/appearance", { accent: null })).then(function (res) {
+        applyAccent(res.accent); $("apColor").value = res.accent; note("Back to green");
+      }, function () {});
+    };
+    $("aBridge").onchange = function () { $("aFound").textContent = ""; renderSettings(); loadNetwork(); };
+    $("aScan").onclick = function () {
+      note("Scanning for about 10 seconds…");
+      $("aFound").textContent = "";
+      busyWhile($("aScan"), api("POST", "/api/admin/scan", { bridge: $("aBridge").value })).then(function (data) {
+        note(data.found.length ? "" : "No motors in range. Close the phone app and try again.");
+        data.found.forEach(function (hit) {
+          $("aFound").appendChild(el("div", { class: "mini" }, [
+            el("span", { class: "name", text: (hit.known || "New motor") + " · " + hit.mac }),
+            el("span", { class: "small", text: (typeof hit.pos === "number" ? posLabel(hit.pos) + " · " : "") +
+                                               (hit.rssi === null ? "?" : hit.rssi) + " dBm" })
+          ]));
+        });
+      }, function () {});
+    };
+    $("aImport").onchange = function () {
+      var file = $("aImport").files[0];
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function () {
+        var backup;
+        try { backup = JSON.parse(reader.result); } catch (e) { note("That file is not JSON.", true); return; }
+        api("POST", "/api/admin/import", { bridge: $("aBridge").value, backup: backup }).then(function (data) {
+          note("Imported: " + data.added.length + " added, " + data.updated.length + " updated");
+          refresh();
+        }).catch(function (err) { note(err.message, true); });
+      };
+      reader.readAsText(file);
+      $("aImport").value = "";
+    };
+    $("uFile").onchange = function () {
+      $("uName").textContent = $("uFile").files[0] ? $("uFile").files[0].name : "Choose zip";
+    };
+    $("uGo").onclick = function () {
+      var file = $("uFile").files[0];
+      if (!file) { note("Choose the update zip first.", true); return; }
+      if (!$("uPw").value) { note("Enter your password to confirm.", true); return; }
+      note("Installing…");
+      busyWhile($("uGo"), file.arrayBuffer().then(function (buffer) {
+        return api("POST", "/api/admin/update", { password: $("uPw").value, zip_b64: toBase64(buffer) });
+      })).then(function (res) {
+        $("uPw").value = "";
+        var text = "Updated " + res.from + " → " + res.to + " (" + res.changed + " files).";
+        if (res.restarting) waitForRestart(text + " Restarting…");
+        else note(text + " Restart the server to finish.");
+      }, function () {});
+    };
+    $("mLogs").onclick = function () {
+      busyWhile($("mLogs"), api("GET", "/api/admin/logs?target=" + encodeURIComponent($("mTarget").value))).then(function (data) {
+        note("");
+        $("mLogText").textContent = data.text;
+        $("mLogText").classList.remove("hide");
+        $("mLogText").scrollTop = $("mLogText").scrollHeight;
+      }, function () {});
+    };
+    $("mRestart").onclick = function () {
+      var target = $("mTarget").value;
+      if ($("mRestart").textContent === "Restart") { $("mRestart").textContent = "Sure?"; return; }
+      $("mRestart").textContent = "Restart";
+      busyWhile($("mRestart"), api("POST", "/api/admin/restart", { target: target })).then(function () {
+        if (target === "server") waitForRestart("Restarting the server…");
+        else { note("Bridge restarting. It will be back in a few seconds."); refresh(); }
+      }, function () {});
+    };
+    function powerButton(id, action, label, done) {
+      $(id).onclick = function () {
+        if ($(id).textContent === label) { $(id).textContent = "Sure?"; return; }
+        $(id).textContent = label;
+        busyWhile($(id), api("POST", "/api/admin/power", { action: action })).then(function () {
+          if (action === "reboot") waitForRestart(done);
+          else { clearTimeout(timer); note(done); }
+        }, function () {});
+      };
+    }
+    powerButton("pwReboot", "reboot", "Restart Pi", "The Pi is restarting. This page will reload when it is back, in about a minute.");
+    powerButton("pwOff", "poweroff", "Shut down Pi", "The Pi is shutting down. Wait for its green light to stop flickering, then unplug it.");
+    $("nMode").onchange = function () {
+      var mode = $("nMode").value;
+      $("nMode").disabled = true;
+      api("POST", "/api/admin/network", { bridge: $("aBridge").value, mode: mode }).then(function (net) {
+        showNetwork(net);
+        if (mode !== "auto") { note("Wi-Fi stays on."); return; }
+        if (!net.cable_ready) { note("Saved. Wi-Fi stays on until a network cable is plugged in and working."); return; }
+        if (!net.grace) { note("Saved."); return; }
+        var moved = location.hostname === net.wifi_ip && /^\d{1,3}(\.\d{1,3}){3}$/.test(net.cable_ip || "");
+        var target = location.protocol + "//" + net.cable_ip + (location.port ? ":" + location.port : "") + "/";
+        note("Wi-Fi goes off in " + net.grace + " seconds." +
+             (moved ? " This page then moves to " + target + " and asks you to sign in again." : ""));
+        if (moved) setTimeout(function () { location.href = target; }, (net.grace + 6) * 1000);
+      }, function (err) {
+        note(err.message, true);
+        loadNetwork();
+      });
+    };
+    $("cNow").onclick = function () {
+      var blind = $("cBlind").value;
+      if (!blind) { note("Import or add a blind first.", true); return; }
+      note("Capturing. This takes about 30 seconds…");
+      busyWhile($("cNow"), api("POST", "/api/admin/capture",
+        { action: "now", bridge: $("aBridge").value, blind: blind, note: $("cNote").value })).then(function (res) {
+        if (res.code === "ok") {
+          note("Captured: " + res.reads + " values read, " + res.notifies + " notifications" +
+               (res.errors ? ", " + res.errors + " errors" : "") + ". Saved.");
+          $("cNote").value = "";
+        } else {
+          note("Saved, but the motor did not answer fully: " + (res.err || res.code), true);
+        }
+        refresh();
+      }, function () {});
+    };
+    $("cMode").onchange = function () {
+      var on = $("cMode").checked;
+      modeBusy = true;
+      api("POST", "/api/admin/capture", { action: "mode", bridge: $("aBridge").value, on: on }).then(function () {
+        note(on ? "Recording moves for an hour. Each move is about 30 seconds slower until this is off." : "Recording off.");
+      }, function (err) {
+        $("cMode").checked = !on;
+        note(err.message, true);
+      }).then(function () { return refresh(); }).then(function () { modeBusy = false; renderSettings(); });
+    };
+    $("cClear").onclick = function () {
+      if ($("cClear").textContent === "Clear") { $("cClear").textContent = "Sure?"; return; }
+      $("cClear").textContent = "Clear";
+      busyWhile($("cClear"), api("POST", "/api/admin/capture", { action: "clear", bridge: $("aBridge").value }))
+        .then(function (res) { note(res.removed + (res.removed === 1 ? " capture removed." : " captures removed.")); refresh(); }, function () {});
+    };
+    $("cDown").onclick = function () {
+      var bridge = $("aBridge").value;
+      if (!bridge) { note("No bridge has connected yet.", true); return; }
+      note("Preparing the debug zip…");
+      busyWhile($("cDown"), fetch("/api/admin/debug?bridge=" + encodeURIComponent(bridge),
+        { credentials: "same-origin", cache: "no-store" }).then(function (res) {
+        if (res.status === 401) showLogin();
+        if (!res.ok) {
+          return res.json().catch(function () { return {}; }).then(function (data) {
+            throw new Error(data.error || ("HTTP " + res.status));
+          });
+        }
+        var name = /filename="([^"]+)"/.exec(res.headers.get("Content-Disposition") || "");
+        return res.blob().then(function (blob) {
+          var link = el("a", { href: URL.createObjectURL(blob), download: name ? name[1] : "blindbridge-debug.zip" });
+          document.body.appendChild(link);
+          link.click();
+          setTimeout(function () { URL.revokeObjectURL(link.href); link.remove(); }, 4000);
+          note("Saved " + link.getAttribute("download") + ". Attach that file to the chat.");
+        });
+      })).then(function () {}, function () {});
+    };
+    $("lSave").onclick = function () {
+      var lat = $("lLat").value.trim(), lon = $("lLon").value.trim();
+      var body = { timezone: $("lTz").value.trim(),
+                   latitude: lat === "" ? null : Number(lat), longitude: lon === "" ? null : Number(lon) };
+      if ((lat === "") !== (lon === "") || Number.isNaN(body.latitude) || Number.isNaN(body.longitude)) {
+        note("Enter both latitude and longitude as numbers, or leave both empty.", true); return;
+      }
+      busyWhile($("lSave"), api("POST", "/api/admin/location", body)).then(function () { note("Location saved"); refresh(); }, function () {});
+    };
+    $("pSave").onclick = function () {
+      busyWhile($("pSave"), api("POST", "/api/admin/password", { current: $("pCur").value, new: $("pNew").value })).then(function () {
+        $("pCur").value = ""; $("pNew").value = ""; note("Password changed. Other devices were signed out.");
+      }, function () {});
+    };
+  }
+
+  function render() {
+    $("login").style.display = "none";
+    $("app").classList.remove("hide");
+    $("bridgeDot").className = "dot" + (state.bridge.online ? " on" : "");
+    $("bridgeText").textContent = bridgeSummary();
+    var unsynced = state.clock_synced === false;
+    hour12 = state.clock === "12" || (state.clock !== "24" && deviceUses12());
+    if (document.activeElement !== $("apClock")) $("apClock").value = state.clock === "12" || state.clock === "24" ? state.clock : "auto";
+    $("clock").textContent = tm(state.time) + (unsynced ? " · clock not synced" : "");
+    $("clock").className = unsynced ? "bad" : "";
+    $("clock").title = unsynced
+      ? "The Pi has not set its clock from a time server since it started, so this time may be wrong and schedules may run early or late. It syncs by itself once it has internet."
+      : "The Pi's clock. Schedules run on it.";
+    $("sun").textContent = state.sun ? "Sunrise " + tm(state.sun.sunrise) + " · Sunset " + tm(state.sun.sunset) : "";
+    if ((state.accent || DEFAULT_ACCENT) !== accent) applyAccent(state.accent);
+    if (document.activeElement !== $("apColor")) $("apColor").value = accent;
+    $("ver").textContent = "Server " + state.version + (state.bridge.fw ? " · Bridge " + state.bridge.fw : "");
+    renderBlinds();
+    renderScheds();
+    renderBridges();
+    renderSettings();
+    if (document.activeElement !== $("sBlind")) fillBlindSelect();
+    var log = $("log");
+    log.textContent = "";
+    state.log.forEach(function (entry) {
+      log.appendChild(el("div", { text: tm(entry.at) + "  " + entry.message }));
+    });
+  }
+
+  function refresh() {
+    clearTimeout(timer);
+    return api("GET", "/api/state").then(function (data) {
+      state = data;
+      render();
+      var busy = state.blinds.some(function (b) { return b.busy; });
+      timer = setTimeout(refresh, document.hidden ? 15000 : (busy ? 1500 : 4000));
+    }).catch(function (err) {
+      if ($("login").style.display !== "block") {
+        say(err.message, true);
+        timer = setTimeout(refresh, 6000);
+      }
+    });
+  }
+
+  var saved = null;
+  try { saved = localStorage.getItem("bb_accent"); } catch (err) { /* private browsing */ }
+  applyAccent(saved);
+  if (window.matchMedia) {
+    var scheme = window.matchMedia("(prefers-color-scheme: dark)");
+    var again = function () { applyAccent(accent); };
+    if (scheme.addEventListener) scheme.addEventListener("change", again); else if (scheme.addListener) scheme.addListener(again);
+    if (window.matchMedia("(min-width: 900px)").matches) { $("schedBox").open = true; $("logBox").open = true; }
+  }
+  document.querySelectorAll("#tabs button").forEach(function (tab) {
+    tab.onclick = function () { showTab(tab.getAttribute("data-tab")); };
+  });
+
+  DAYS.forEach(function (d) {
+    var box = el("input", { type: "checkbox", id: "d_" + d });
+    box.checked = true;
+    $("sDays").appendChild(el("label", {}, [box, document.createTextNode(d.charAt(0).toUpperCase() + d.slice(1))]));
+  });
+
+  document.querySelectorAll("[data-all]").forEach(function (btn) {
+    btn.onclick = function () { move(["all"], parseInt(btn.getAttribute("data-all"), 10)); };
+  });
+  wireSettings();
+  $("sKind").onchange = kindChanged;
+  $("sCancel").onclick = function () { fillForm(null); };
+  $("schedForm").onsubmit = function (ev) {
+    ev.preventDefault();
+    var body = {
+      name: $("sName").value,
+      kind: $("sKind").value,
+      at: $("sAt").value,
+      offset_min: parseInt($("sOff").value, 10) || 0,
+      days: DAYS.filter(function (d) { return $("d_" + d).checked; }),
+      blinds: [$("sBlind").value],
+      position: parseInt($("sPos").value, 10),
+      enabled: editEnabled
+    };
+    if ($("sId").value) body.id = parseInt($("sId").value, 10);
+    api("POST", "/api/schedules", body)
+      .then(function () { fillForm(null); say("Saved"); refresh(); })
+      .catch(function (err) { say(err.message, true); });
+  };
+  $("loginForm").onsubmit = function (ev) {
+    ev.preventDefault();
+    $("loginMsg").textContent = "";
+    api("POST", "/api/login", { password: $("pw").value })
+      .then(function () { $("pw").value = ""; refresh(); })
+      .catch(function (err) { $("loginMsg").textContent = err.message; });
+  };
+  $("logout").onclick = function () {
+    api("POST", "/api/logout", {}).then(showLogin, showLogin);
+  };
+  document.addEventListener("visibilitychange", function () { if (!document.hidden && state) refresh(); });
+
+  refresh();
+})();
+</script>
+</body>
+</html>
